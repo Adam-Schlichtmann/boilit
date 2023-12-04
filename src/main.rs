@@ -30,7 +30,7 @@ struct CreateFile {
 #[command(author, version, about, long_about = None)]
 struct Cli {
     /// The location of the config file
-    #[arg(short, long, default_value = "./config.toml")]
+    #[arg(short, long, default_value = "./boilit.toml")]
     config: String,
 
     /// The template to build

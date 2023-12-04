@@ -1,7 +1,13 @@
 [package]
-name = "rust-play"
+name = "boilit"
 version = "0.1.0"
 edition = "2021"
+authors = ["Adam Schlichtmann adam.schlichtmann1113@gmail.com"]
+readme = "README.md"
+homepage = "https://github.com/Adam-Schlichtmann/boilit"
+repository = "https://github.com/Adam-Schlichtmann/boilit"
+keywords = ["cli", "boilerplate"]
+categories = ["command-line-utilities"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
