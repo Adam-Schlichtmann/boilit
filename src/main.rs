@@ -46,10 +46,20 @@ struct Cli {
     path: String,
 }
 
+fn replace_inputs(content: &String, inputs: &Vec<&str>) -> String {
+    let mut temp = String::from(content);
+    for (index, input) in inputs.iter().enumerate() {
+        let from = format!("[{}]", index);
+        temp = temp.replace(&from, input)
+    }
+    temp
+}
+
 fn create_file(file: &CreateFile, inputs: &Vec<&str>, args: &Cli) {
     let new_path = format!("{}/{}", args.path, file.name.replace("[0]", inputs[0]));
     let path = Path::new(&new_path);
-    let content = &file.contents.replace("[0]", inputs[0]);
+    let content = replace_inputs(&file.contents, inputs);
+
     if !path.exists() {
         let prefix = path.parent().unwrap();
         fs::create_dir_all(prefix).unwrap();
