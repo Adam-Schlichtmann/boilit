@@ -46,26 +46,56 @@ struct Cli {
     path: String,
 }
 
-fn create_file(file: &CreateFile, inputs: &Vec<&str>) {
-    let new_path = format!("./{}", file.name.replace("[0]", inputs[0]));
+fn create_file(file: &CreateFile, inputs: &Vec<&str>, args: &Cli) {
+    let new_path = format!("./{}/{}", args.path, file.name.replace("[0]", inputs[0]));
     let path = Path::new(&new_path);
+    let content = &file.contents.replace("[0]", inputs[0]);
     if !path.exists() {
         let prefix = path.parent().unwrap();
         fs::create_dir_all(prefix).unwrap();
-        let mut f = match fs::File::create(path) {
-            Ok(a) => a,
+        let mut new_file = match fs::OpenOptions::new().write(true).create(true).open(path) {
+            Ok(f) => f,
             Err(e) => {
                 eprintln!("{}", e);
                 // Write `msg` to `stderr`.
-                eprintln!("Unable write new file: '{}'", file.name);
+                eprintln!("Unable open new file: '{}'", path.display());
                 // Exit the program with exit code `1`.
                 exit(1);
             }
         };
 
-        let mut content = &file.contents.replace("[0]", inputs[0]);
+        match write!(new_file, "{}", content) {
+            Ok(a) => a,
+            Err(e) => {
+                eprintln!("{}", e);
+                // Write `msg` to `stderr`.
+                eprintln!("Unable write new file: '{}'", path.display());
+                // Exit the program with exit code `1`.
+                exit(1);
+            }
+        }
+    } else if file.append {
+        let mut file = match fs::OpenOptions::new().write(true).append(true).open(path) {
+            Ok(f) => f,
+            Err(e) => {
+                eprintln!("{}", e);
+                // Write `msg` to `stderr`.
+                eprintln!("Unable open existing file: '{}'", path.display());
+                // Exit the program with exit code `1`.
+                exit(1);
+            }
+        };
 
-        write!(f, "{}", content);
+        match writeln!(file, "{}", content) {
+            Ok(a) => a,
+            Err(e) => {
+                eprintln!("{}", e);
+                // Write `msg` to `stderr`.
+                eprintln!("Unable to append existing file: '{}'", path.display());
+                // Exit the program with exit code `1`.
+                exit(1);
+            }
+        }
     }
 }
 
@@ -111,8 +141,8 @@ fn main() {
     };
 
     for file in files {
-        create_file(file, &separated_inputs)
+        create_file(file, &separated_inputs, &args)
     }
 
-    println!("Successfully created files")
+    println!("Successfully created files");
 }
