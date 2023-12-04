@@ -1,5 +1,6 @@
 use clap::Parser;
 
+use colored::Colorize;
 use serde_derive::Deserialize;
 use std::collections::HashMap;
 use std::fs;
@@ -44,6 +45,16 @@ struct Cli {
     /// The path to write create the files at
     #[arg(short, long, default_value = "./")]
     path: String,
+}
+
+fn count_inputs(create_file: &CreateFile) -> i32 {
+    let mut index = 0;
+    while create_file.contents.contains(&format!("[{}]", index))
+        || create_file.name.contains(&format!("[{}]", index))
+    {
+        index += 1
+    }
+    index
 }
 
 fn replace_inputs(content: &String, inputs: &Vec<&str>) -> String {
@@ -112,7 +123,11 @@ fn create_file(file: &CreateFile, inputs: &Vec<&str>, args: &Cli) {
 
 fn main() {
     let args: Cli = Cli::parse();
-    let separated_inputs: Vec<&str> = args.inputs.split(",").collect();
+    let separated_inputs: Vec<&str> = if args.inputs.len() > 0 {
+        args.inputs.split(",").collect()
+    } else {
+        Vec::new()
+    };
     let contents = match fs::read_to_string(&args.config) {
         // If successful return the files text as `contents`.
         // `c` is a local variable.
@@ -152,8 +167,23 @@ fn main() {
     };
 
     for file in files {
-        create_file(file, &separated_inputs, &args)
+        let available_inputs = count_inputs(&file);
+        if data.options.require_exact_inputs
+            && available_inputs != i32::try_from(separated_inputs.len()).unwrap()
+        {
+            // Write `msg` to `stderr`.
+            eprintln!(
+                "{}  Your template has {} different inputs, but {} were provided",
+                "Require exact inputs is enabled.\n".red(),
+                available_inputs,
+                separated_inputs.len()
+            );
+            // Exit the program with exit code `1`.
+            exit(1);
+        } else {
+            create_file(file, &separated_inputs, &args)
+        }
     }
 
-    println!("Successfully created files");
+    println!("{}", "Successfully created files".green());
 }
