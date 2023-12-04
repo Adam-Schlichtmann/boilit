@@ -47,7 +47,7 @@ struct Cli {
 }
 
 fn create_file(file: &CreateFile, inputs: &Vec<&str>, args: &Cli) {
-    let new_path = format!("./{}/{}", args.path, file.name.replace("[0]", inputs[0]));
+    let new_path = format!("{}/{}", args.path, file.name.replace("[0]", inputs[0]));
     let path = Path::new(&new_path);
     let content = &file.contents.replace("[0]", inputs[0]);
     if !path.exists() {
@@ -75,6 +75,7 @@ fn create_file(file: &CreateFile, inputs: &Vec<&str>, args: &Cli) {
             }
         }
     } else if file.append {
+        // Add on to an existing file
         let mut file = match fs::OpenOptions::new().write(true).append(true).open(path) {
             Ok(f) => f,
             Err(e) => {
