@@ -187,3 +187,56 @@ fn main() {
 
     println!("{}", "Successfully created files".green());
 }
+
+#[test]
+fn test_count_inputs() {
+    let file_0 = CreateFile {
+        contents: String::from("How are you doing"),
+        name: String::from("Hello"),
+        append: false,
+    };
+    let available = count_inputs(&file_0);
+    assert_eq!(available, 0);
+
+    let file_1 = CreateFile {
+        contents: String::from("Hello how are you doing [0]"),
+        name: String::from("[0]"),
+        append: false,
+    };
+    let available = count_inputs(&file_1);
+    assert_eq!(available, 1);
+
+    let file_2 = CreateFile {
+        contents: String::from("Hello how are you doing [0]"),
+        name: String::from("[1]"),
+        append: false,
+    };
+    let available = count_inputs(&file_2);
+    assert_eq!(available, 2);
+
+    let file_3 = CreateFile {
+        contents: String::from("Hello how are you doing [0] [2]"),
+        name: String::from("[1]"),
+        append: false,
+    };
+    let available = count_inputs(&file_3);
+    assert_eq!(available, 3);
+}
+
+#[test]
+fn test_replace_inputs() {
+    let content_1 = String::from("How are you doing?");
+    let inputs_1: Vec<&str> = Vec::new();
+    let final_content = replace_inputs(&content_1, &inputs_1);
+    assert_eq!(final_content, "How are you doing?");
+
+    let content_2 = String::from("How are [0] doing?");
+    let inputs_2: Vec<&str> = vec!["you"];
+    let final_content = replace_inputs(&content_2, &inputs_2);
+    assert_eq!(final_content, "How are you doing?");
+
+    let content_3 = String::from("[1] are [0] doing? [1] is the [2]?");
+    let inputs_3: Vec<&str> = vec!["you", "What", "plan"];
+    let final_content = replace_inputs(&content_3, &inputs_3);
+    assert_eq!(final_content, "What are you doing? What is the plan?");
+}
