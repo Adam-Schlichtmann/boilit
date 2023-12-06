@@ -15,10 +15,10 @@ jobs:
           - target: x86_64-pc-windows-gnu
             archive: zip
           - target: x86_64-unknown-linux-musl
-            archive: tar.gz tar.xz tar.zst
+            archive: tar.gz
     steps:
       - name: Install deps
-        run: sudo apt-get install -y mingw-w64
+        run: sudo apt-get install -y mingw-w64 zip
       - name: Checkout
         uses: actions/checkout@master
       - name: Build
@@ -27,9 +27,15 @@ jobs:
           toolchain: stable
       - run: rustup target add ${{ matrix.target }}
       - run: cargo build --target=${{ matrix.target }} --release
+      - name: Create Zip
+        if: ${{ matrix.archive }} == 'zip'
+        run: cd ./target/${{ matrix.target }}/release && zip ../../../${{ matrix.target }} ./boilit
+      - name: Create tarball
+        if: ${{ matrix.archive }} == 'tar.gz'
+        run: cd ./target/${{ matrix.target }}/release && tar -c -a -f ../../../${{ matrix.target }}.tar.gz ./boilit
       - name: Upload Build
         uses: softprops/action-gh-release@v1
         with:
-          files: ./target/${{ matrix.target }}/release/boilit
+          files: ${{ matrix.target }}.${{ matrix.archive }}
         env:
           GITHUB_TOKEN: ${{ secrets.GHA_TOKEN }}
