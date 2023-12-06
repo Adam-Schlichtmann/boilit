@@ -20,7 +20,7 @@ jobs:
             archive: zip
     steps:
       - name: Install deps
-        run: apt install clang gcc g++ zlib1g-dev libmpc-dev libmpfr-dev libgmp-dev
+        run: sudo apt-get install -y clang gcc g++ zlib1g-dev libmpc-dev libmpfr-dev libgmp-dev
       - name: Checkout
         uses: actions/checkout@master
       - name: Build
