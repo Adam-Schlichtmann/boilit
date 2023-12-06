@@ -27,10 +27,9 @@ jobs:
           toolchain: stable
       - run: rustup target add ${{ matrix.target }}
       - run: cargo build --target=${{ matrix.target }} --release
-      - run: ls ./target/${{ matrix.target }}/release
       - name: Create Zip
         if: ${{ matrix.archive }} == 'zip'
-        run: cd ./target/${{ matrix.target }}/release && zip ../../../${{ matrix.target }} ./boilit
+        run: cd ./target/${{ matrix.target }}/release && zip ../../../${{ matrix.target }} ./boilit.exe
       - name: Create tarball
         if: ${{ matrix.archive }} == 'tar.gz'
         run: cd ./target/${{ matrix.target }}/release && tar -c -a -f ../../../${{ matrix.target }}.tar.gz ./boilit
