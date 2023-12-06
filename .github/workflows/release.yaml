@@ -19,6 +19,8 @@ jobs:
           - target: x86_64-apple-darwin
             archive: zip
     steps:
+      - name: Install deps
+        run: apt install clang gcc g++ zlib1g-dev libmpc-dev libmpfr-dev libgmp-dev
       - name: Checkout
         uses: actions/checkout@master
       - name: Build
