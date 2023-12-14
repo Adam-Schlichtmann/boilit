@@ -1,6 +1,6 @@
 [package]
 name = "boilit"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 authors = ["Adam Schlichtmann adam.schlichtmann1113@gmail.com"]
 license = "MIT"

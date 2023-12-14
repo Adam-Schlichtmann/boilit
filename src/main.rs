@@ -49,8 +49,8 @@ struct Cli {
 
 fn count_inputs(create_file: &CreateFile) -> i32 {
     let mut index = 0;
-    while create_file.contents.contains(&format!("[{}]", index))
-        || create_file.name.contains(&format!("[{}]", index))
+    while create_file.contents.contains(&format!("[[:{}:]]", index))
+        || create_file.name.contains(&format!("[[:{}:]]", index))
     {
         index += 1
     }
@@ -60,14 +60,15 @@ fn count_inputs(create_file: &CreateFile) -> i32 {
 fn replace_inputs(content: &String, inputs: &Vec<&str>) -> String {
     let mut temp = String::from(content);
     for (index, input) in inputs.iter().enumerate() {
-        let from = format!("[{}]", index);
+        let from = format!("[[:{}:]]", index);
         temp = temp.replace(&from, input)
     }
     temp
 }
 
 fn create_file(file: &CreateFile, inputs: &Vec<&str>, args: &Cli) {
-    let new_path = format!("{}/{}", args.path, file.name.replace("[0]", inputs[0]));
+    let replaced_path = replace_inputs(&file.name, inputs);
+    let new_path = format!("{}/{}", args.path, replaced_path);
     let path = Path::new(&new_path);
     let content = replace_inputs(&file.contents, inputs);
 
@@ -210,24 +211,24 @@ fn test_count_inputs() {
     assert_eq!(available, 0);
 
     let file_1 = CreateFile {
-        contents: String::from("Hello how are you doing [0]"),
-        name: String::from("[0]"),
+        contents: String::from("Hello how are you doing [[:0:]]"),
+        name: String::from("[[:0:]]"),
         append: false,
     };
     let available = count_inputs(&file_1);
     assert_eq!(available, 1);
 
     let file_2 = CreateFile {
-        contents: String::from("Hello how are you doing [0]"),
-        name: String::from("[1]"),
+        contents: String::from("Hello how are you doing [[:0:]]"),
+        name: String::from("[[:1:]]"),
         append: false,
     };
     let available = count_inputs(&file_2);
     assert_eq!(available, 2);
 
     let file_3 = CreateFile {
-        contents: String::from("Hello how are you doing [0] [2]"),
-        name: String::from("[1]"),
+        contents: String::from("Hello how are you doing [[:0:]] [[:2:]]"),
+        name: String::from("[[:1:]]"),
         append: false,
     };
     let available = count_inputs(&file_3);
@@ -241,12 +242,12 @@ fn test_replace_inputs() {
     let final_content = replace_inputs(&content_1, &inputs_1);
     assert_eq!(final_content, "How are you doing?");
 
-    let content_2 = String::from("How are [0] doing?");
+    let content_2 = String::from("How are [[:0:]] doing?");
     let inputs_2: Vec<&str> = vec!["you"];
     let final_content = replace_inputs(&content_2, &inputs_2);
     assert_eq!(final_content, "How are you doing?");
 
-    let content_3 = String::from("[1] are [0] doing? [1] is the [2]?");
+    let content_3 = String::from("[[:1:]] are [[:0:]] doing? [[:1:]] is the [[:2:]]?");
     let inputs_3: Vec<&str> = vec!["you", "What", "plan"];
     let final_content = replace_inputs(&content_3, &inputs_3);
     assert_eq!(final_content, "What are you doing? What is the plan?");
