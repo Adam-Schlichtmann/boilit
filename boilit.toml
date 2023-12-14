@@ -3,33 +3,37 @@ require_exact_inputs = true
 
 
 [[config.component]]
-name = "[0]/[0].tsx"
+name = "[[:0:]]/[[:0:]].tsx"
 append = false
 contents = """
-import { Text, View } from \"react-native\";
+import { Text, View } from 'react-native';
 
-const [0] = () => {
-return (<View>
-<Text>[0]</Text>
-</View>);
-}"""
+const [[:0:]] = () => {
+  return (
+    <View>
+      <Text>[[:0:]]</Text>
+    </View>
+  );
+};
+"""
 
 [[config.component]]
-name = "[0]/index.ts"
+name = "[[:0:]]/index.ts"
 append = false
-contents = "export { default } from \"./[0]\";"
+contents = "export { default } from \"./[[:0:]]\";"
 
 [[config.component]]
-name = "[0]/[0].styles.ts"
+name = "[[:0:]]/[[:0:]].styles.ts"
 append = false
 contents = """
 import { ThemeType } from \"Wedgekit/Types\"
 
 export type Styles = {};
 
-export default (theme: ThemeType): Styles => ({ });"""
+export default (theme: ThemeType): Styles => ({ });
+"""
 
 [[config.component]]
 name = "index.ts"
 append = true
-contents = "export { default as [0] } from \"./[0]\";"
+contents = "export { default as [[:0:]] } from \"./[[:0:]]\";"
