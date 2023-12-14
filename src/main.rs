@@ -166,23 +166,34 @@ fn main() {
         }
     };
 
-    for file in files {
-        let available_inputs = count_inputs(&file);
-        if data.options.require_exact_inputs
-            && available_inputs != i32::try_from(separated_inputs.len()).unwrap()
-        {
+    if data.options.require_exact_inputs {
+        let mut max_input_count = 0;
+        for file in files {
+            let available_inputs = count_inputs(&file);
+            if max_input_count < available_inputs {
+                max_input_count = available_inputs
+            }
+        }
+        if max_input_count != i32::try_from(separated_inputs.len()).unwrap() {
             // Write `msg` to `stderr`.
             eprintln!(
-                "{}  Your template has {} different inputs, but {} were provided",
+                "{}  Your template has {} different inputs, but {} {} provided",
                 "Require exact inputs is enabled.\n".red(),
-                available_inputs,
-                separated_inputs.len()
+                max_input_count,
+                separated_inputs.len(),
+                if separated_inputs.len() > 1 {
+                    "were"
+                } else {
+                    "was"
+                }
             );
             // Exit the program with exit code `1`.
             exit(1);
-        } else {
-            create_file(file, &separated_inputs, &args)
         }
+    }
+
+    for file in files {
+        create_file(file, &separated_inputs, &args)
     }
 
     println!("{}", "Successfully created files".green());
