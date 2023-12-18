@@ -1,5 +1,6 @@
 [options]
 require_exact_inputs = true
+allow_multi_creation = true
 
 
 [[config.component]]
@@ -37,3 +38,14 @@ export default (theme: ThemeType): Styles => ({ });
 name = "index.ts"
 append = true
 contents = "export { default as [[:0:]] } from \"./[[:0:]]\";"
+
+
+[[config.test1]]
+name = "test/[[:0:]]And[[:1:]].ts"
+append = false
+contents = "export const add = ([[:0:]]: number, [[:1:]]: number) => [[:0:]] + [[:1:]];"
+
+[[config.test2]]
+name = "test/test2.ts"
+append = false
+contents = "export const identity = (a) => a;"
