@@ -17,7 +17,13 @@ struct Config {
 
 #[derive(Debug, Deserialize)]
 struct Options {
+    /// Require the exact number of inputs to build a template
     require_exact_inputs: bool,
+    /// Allow for creating multiple instances of a template using a single command
+    /// EG: If template "component" requires 2 inputs running
+    ///     "boilit -t component -i a b c d" OR "boilit -t component  -i a b -i b c"
+    ///     would create the component template two separate times using a, b and c, d as the inputs
+    allow_multi_creation: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -39,8 +45,8 @@ struct Cli {
     template: String,
 
     /// The input values for the template (comma separated)
-    #[arg(short, long, default_value = "")]
-    inputs: String,
+    #[arg(short, long, num_args = 0.., value_delimiter = ' ')]
+    inputs: Vec<String>,
 
     /// The path to write create the files at
     #[arg(short, long, default_value = "./")]
@@ -57,7 +63,7 @@ fn count_inputs(create_file: &CreateFile) -> i32 {
     index
 }
 
-fn replace_inputs(content: &String, inputs: &Vec<&str>) -> String {
+fn replace_inputs(content: &String, inputs: &Vec<String>) -> String {
     let mut temp = String::from(content);
     for (index, input) in inputs.iter().enumerate() {
         let from = format!("[[:{}:]]", index);
@@ -66,7 +72,7 @@ fn replace_inputs(content: &String, inputs: &Vec<&str>) -> String {
     temp
 }
 
-fn create_file(file: &CreateFile, inputs: &Vec<&str>, args: &Cli) {
+fn create_file(file: &CreateFile, inputs: &Vec<String>, args: &Cli) {
     let replaced_path = replace_inputs(&file.name, inputs);
     let new_path = format!("{}/{}", args.path, replaced_path);
     let path = Path::new(&new_path);
@@ -124,11 +130,7 @@ fn create_file(file: &CreateFile, inputs: &Vec<&str>, args: &Cli) {
 
 fn main() {
     let args: Cli = Cli::parse();
-    let separated_inputs: Vec<&str> = if args.inputs.len() > 0 {
-        args.inputs.split(",").collect()
-    } else {
-        Vec::new()
-    };
+
     let contents = match fs::read_to_string(&args.config) {
         // If successful return the files text as `contents`.
         // `c` is a local variable.
@@ -167,34 +169,47 @@ fn main() {
         }
     };
 
-    if data.options.require_exact_inputs {
-        let mut max_input_count = 0;
-        for file in files {
-            let available_inputs = count_inputs(&file);
-            if max_input_count < available_inputs {
-                max_input_count = available_inputs
-            }
+    let mut max_input_count = 0;
+    for file in files {
+        let available_inputs = count_inputs(&file);
+        if max_input_count < available_inputs {
+            max_input_count = available_inputs
         }
-        if max_input_count != i32::try_from(separated_inputs.len()).unwrap() {
-            // Write `msg` to `stderr`.
-            eprintln!(
-                "{}  Your template has {} different inputs, but {} {} provided",
-                "Require exact inputs is enabled.\n".red(),
-                max_input_count,
-                separated_inputs.len(),
-                if separated_inputs.len() > 1 {
-                    "were"
-                } else {
-                    "was"
-                }
-            );
-            // Exit the program with exit code `1`.
-            exit(1);
+    }
+
+    // Create a 2D Vector each inner vector represents a file
+    let chunked_inputs: Vec<Vec<String>> = args
+        .inputs
+        .chunks(if data.options.allow_multi_creation {
+            max_input_count.try_into().unwrap()
+        } else {
+            args.inputs.len().try_into().unwrap()
+        })
+        .into_iter()
+        .map(|x| x.to_vec())
+        .collect();
+
+    if data.options.require_exact_inputs {
+        for v in &chunked_inputs {
+            if max_input_count != i32::try_from(v.len()).unwrap() {
+                // Write `msg` to `stderr`.
+                eprintln!(
+                    "{}  Your template has {} different inputs, but {} {} provided",
+                    "Require exact inputs is enabled.\n".red(),
+                    max_input_count,
+                    args.inputs.len(),
+                    if args.inputs.len() > 1 { "were" } else { "was" }
+                );
+                // Exit the program with exit code `1`.
+                exit(1);
+            }
         }
     }
 
     for file in files {
-        create_file(file, &separated_inputs, &args)
+        for i in &chunked_inputs {
+            create_file(file, &i, &args)
+        }
     }
 
     println!("{}", "Successfully created files".green());
@@ -238,17 +253,21 @@ fn test_count_inputs() {
 #[test]
 fn test_replace_inputs() {
     let content_1 = String::from("How are you doing?");
-    let inputs_1: Vec<&str> = Vec::new();
+    let inputs_1: Vec<String> = Vec::new();
     let final_content = replace_inputs(&content_1, &inputs_1);
     assert_eq!(final_content, "How are you doing?");
 
     let content_2 = String::from("How are [[:0:]] doing?");
-    let inputs_2: Vec<&str> = vec!["you"];
+    let inputs_2: Vec<String> = vec![String::from("you")];
     let final_content = replace_inputs(&content_2, &inputs_2);
     assert_eq!(final_content, "How are you doing?");
 
     let content_3 = String::from("[[:1:]] are [[:0:]] doing? [[:1:]] is the [[:2:]]?");
-    let inputs_3: Vec<&str> = vec!["you", "What", "plan"];
+    let inputs_3: Vec<String> = vec![
+        String::from("you"),
+        String::from("What"),
+        String::from("plan"),
+    ];
     let final_content = replace_inputs(&content_3, &inputs_3);
     assert_eq!(final_content, "What are you doing? What is the plan?");
 }
