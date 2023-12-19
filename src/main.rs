@@ -5,6 +5,7 @@ use serde_derive::Deserialize;
 use std::collections::HashMap;
 use std::fs;
 use std::io::Write;
+use std::io::{BufRead, BufReader, BufWriter};
 use std::path::Path;
 use std::process::exit;
 use toml::{self};
@@ -30,7 +31,8 @@ struct Options {
 struct CreateFile {
     name: String,
     contents: String,
-    append: bool,
+    append: Option<bool>,
+    sort: Option<bool>,
 }
 
 #[derive(Parser, Debug)]
@@ -78,51 +80,85 @@ fn create_file(file: &CreateFile, inputs: &Vec<String>, args: &Cli) {
     let path = Path::new(&new_path);
     let content = replace_inputs(&file.contents, inputs);
 
-    if !path.exists() {
-        let prefix = path.parent().unwrap();
-        fs::create_dir_all(prefix).unwrap();
-        let mut new_file = match fs::OpenOptions::new().write(true).create(true).open(path) {
-            Ok(f) => f,
-            Err(e) => {
-                eprintln!("{}", e);
-                // Write `msg` to `stderr`.
-                eprintln!("Unable open new file: '{}'", path.display());
-                // Exit the program with exit code `1`.
-                exit(1);
-            }
-        };
-
-        match write!(new_file, "{}", content) {
-            Ok(a) => a,
-            Err(e) => {
-                eprintln!("{}", e);
-                // Write `msg` to `stderr`.
-                eprintln!("Unable write new file: '{}'", path.display());
-                // Exit the program with exit code `1`.
-                exit(1);
-            }
+    let prefix = path.parent().unwrap();
+    fs::create_dir_all(prefix).unwrap();
+    let mut f = match fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .append(file.append.unwrap_or(false))
+        .open(path)
+    {
+        Ok(f) => f,
+        Err(e) => {
+            eprintln!("{}", e);
+            // Write `msg` to `stderr`.
+            eprintln!("Unable open file: '{}'", path.display());
+            // Exit the program with exit code `1`.
+            exit(1);
         }
-    } else if file.append {
-        // Add on to an existing file
-        let mut file = match fs::OpenOptions::new().write(true).append(true).open(path) {
+    };
+
+    match write!(f, "{}", content) {
+        Ok(a) => a,
+        Err(e) => {
+            eprintln!("{}", e);
+            // Write `msg` to `stderr`.
+            eprintln!("Unable write file: '{}'", path.display());
+            // Exit the program with exit code `1`.
+            exit(1);
+        }
+    }
+    if file.sort.unwrap_or(false) {
+        let read_file = match fs::OpenOptions::new().read(true).open(path) {
             Ok(f) => f,
             Err(e) => {
                 eprintln!("{}", e);
                 // Write `msg` to `stderr`.
-                eprintln!("Unable open existing file: '{}'", path.display());
+                eprintln!("Unable open file: '{}'", path.display());
+                // Exit the program with exit code `1`.
+                exit(1);
+            }
+        };
+        let reader = BufReader::new(read_file);
+
+        let mut lines: Vec<String> = match reader.lines().collect() {
+            Ok(a) => a,
+            Err(e) => {
+                eprintln!("{}", e);
+                // Write `msg` to `stderr`.
+                eprintln!("Unable to read lines of: '{}'", path.display());
                 // Exit the program with exit code `1`.
                 exit(1);
             }
         };
 
-        match writeln!(file, "{}", content) {
-            Ok(a) => a,
+        lines.sort();
+
+        let write_file = match fs::OpenOptions::new().write(true).truncate(true).open(path) {
+            Ok(f) => f,
             Err(e) => {
                 eprintln!("{}", e);
                 // Write `msg` to `stderr`.
-                eprintln!("Unable to append existing file: '{}'", path.display());
+                eprintln!("Unable open file: '{}'", path.display());
                 // Exit the program with exit code `1`.
                 exit(1);
+            }
+        };
+
+        let mut writer = BufWriter::new(write_file);
+
+        // Iterate over the lines and write them to the file
+        for line in lines {
+            match writeln!(&mut writer, "{}", line) {
+                Ok(a) => a,
+                Err(e) => {
+                    eprintln!("{}", e);
+                    // Write `msg` to `stderr`.
+                    eprintln!("Unable write file: '{}'", path.display());
+                    // Exit the program with exit code `1`.
+                    exit(1);
+                }
             }
         }
     }
@@ -220,7 +256,8 @@ fn test_count_inputs() {
     let file_0 = CreateFile {
         contents: String::from("How are you doing"),
         name: String::from("Hello"),
-        append: false,
+        append: None,
+        sort: None,
     };
     let available = count_inputs(&file_0);
     assert_eq!(available, 0);
@@ -228,7 +265,8 @@ fn test_count_inputs() {
     let file_1 = CreateFile {
         contents: String::from("Hello how are you doing [[:0:]]"),
         name: String::from("[[:0:]]"),
-        append: false,
+        append: None,
+        sort: None,
     };
     let available = count_inputs(&file_1);
     assert_eq!(available, 1);
@@ -236,7 +274,8 @@ fn test_count_inputs() {
     let file_2 = CreateFile {
         contents: String::from("Hello how are you doing [[:0:]]"),
         name: String::from("[[:1:]]"),
-        append: false,
+        append: None,
+        sort: None,
     };
     let available = count_inputs(&file_2);
     assert_eq!(available, 2);
@@ -244,7 +283,8 @@ fn test_count_inputs() {
     let file_3 = CreateFile {
         contents: String::from("Hello how are you doing [[:0:]] [[:2:]]"),
         name: String::from("[[:1:]]"),
-        append: false,
+        append: None,
+        sort: None,
     };
     let available = count_inputs(&file_3);
     assert_eq!(available, 3);
